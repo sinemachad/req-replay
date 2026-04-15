@@ -33,7 +33,10 @@ class RequestStore:
         if not path.exists():
             raise FileNotFoundError(f"No captured request found with id: {request_id}")
         with open(path, "r", encoding="utf-8") as f:
-            data = json.load(f)
+            try:
+                data = json.load(f)
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Corrupted capture file for id '{request_id}': {e}") from e
         return CapturedRequest.from_dict(data)
 
     def list_all(self) -> List[CapturedRequest]:
@@ -41,7 +44,11 @@ class RequestStore:
         requests = []
         for file in self.store_dir.glob("*.json"):
             with open(file, "r", encoding="utf-8") as f:
-                data = json.load(f)
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:
+                    # Skip corrupted files rather than failing the entire listing
+                    continue
             requests.append(CapturedRequest.from_dict(data))
         return sorted(requests, key=lambda r: r.captured_at)
 
