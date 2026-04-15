@@ -1,68 +1,82 @@
-"""CLI entry point for req-replay."""
-
-import json
-import sys
-
+"""Main CLI entry-point for req-replay."""
 import click
 
+from req_replay.storage import RequestStore
 from req_replay.capture import capture_request
 from req_replay.replay import replay_request
-from req_replay.storage import RequestStore
+from req_replay.cli_assert import assert_group
+from req_replay.cli_transform import transform_group
+from req_replay.cli_watch import watch_group
+from req_replay.cli_compare import compare_group
+from req_replay.cli_schedule import schedule_group
+from req_replay.cli_tag import tag_group
+from req_replay.cli_group import group_cmd
 
 
 @click.group()
-@click.option("--store-dir", default=".req_replay", show_default=True, help="Storage directory.")
-@click.pass_context
-def cli(ctx: click.Context, store_dir: str):
-    """req-replay: Capture and replay HTTP requests."""
-    ctx.ensure_object(dict)
-    ctx.obj["store"] = RequestStore(store_dir)
+def cli():
+    """req-replay: capture, store, and replay HTTP requests."""
 
 
 @cli.command()
 @click.argument("url")
-@click.option("-m", "--method", default="GET", show_default=True)
-@click.option("-H", "--header", multiple=True, help="Header in Key:Value format.")
-@click.option("-b", "--body", default=None, help="Request body string.")
-@click.option("-t", "--tag", multiple=True, help="Tags for this request.")
-@click.pass_context
-def capture(ctx, url, method, header, body, tag):
-    """Capture an HTTP request and store it."""
+@click.option("--method", "-m", default="GET", show_default=True)
+@click.option("--header", "-H", multiple=True, help="Header in Key:Value format.")
+@click.option("--body", "-b", default=None)
+@click.option("--tag", "-t", multiple=True)
+@click.option("--store-path", default=".req_replay", show_default=True)
+def capture(url, method, header, body, tag, store_path):
+    """Capture and store an HTTP request/response pair."""
     headers = {}
     for h in header:
         if ":" in h:
             k, v = h.split(":", 1)
             headers[k.strip()] = v.strip()
 
-    store = ctx.obj["store"]
-    req, resp = capture_request(method, url, headers=headers, body=body, store=store, tags=list(tag))
-    click.echo(f"Captured request {req.id} → {resp.status_code}")
+    store = RequestStore(store_path)
+    req, resp = capture_request(
+        method=method,
+        url=url,
+        headers=headers,
+        body=body,
+        tags=list(tag),
+        store=store,
+    )
+    click.echo(f"Captured {req.id}  {method} {url}  -> {resp.status_code}")
 
 
 @cli.command()
 @click.argument("request_id")
-@click.option("--url", default=None, help="Override the target URL.")
-@click.pass_context
-def replay(ctx, request_id, url):
-    """Replay a stored HTTP request and compare responses."""
-    store = ctx.obj["store"]
-    result = replay_request(request_id, store, override_url=url)
+@click.option("--store-path", default=".req_replay", show_default=True)
+def replay(request_id, store_path):
+    """Replay a previously captured request."""
+    store = RequestStore(store_path)
+    try:
+        req = store.load(request_id)
+    except FileNotFoundError:
+        click.echo(f"Request '{request_id}' not found.", err=True)
+        raise SystemExit(1)
+    result = replay_request(req)
     click.echo(result.summary())
-    if not result.passed:
-        sys.exit(1)
 
 
 @cli.command(name="list")
-@click.pass_context
-def list_requests(ctx):
+@click.option("--store-path", default=".req_replay", show_default=True)
+def list_requests(store_path):
     """List all stored request IDs."""
-    store = ctx.obj["store"]
+    store = RequestStore(store_path)
     ids = store.list_ids()
     if not ids:
         click.echo("No requests stored.")
+        return
     for rid in ids:
         click.echo(rid)
 
 
-if __name__ == "__main__":
-    cli()
+cli.add_command(assert_group, name="assert")
+cli.add_command(transform_group, name="transform")
+cli.add_command(watch_group, name="watch")
+cli.add_command(compare_group, name="compare")
+cli.add_command(schedule_group, name="schedule")
+cli.add_command(tag_group, name="tag")
+cli.add_command(group_cmd, name="group")
