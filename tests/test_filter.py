@@ -84,3 +84,15 @@ def test_invalid_regex_raises_value_error():
 def test_empty_list_returns_empty():
     result = filter_requests([], FilterCriteria(method="GET"))
     assert result == []
+
+
+def test_filter_by_tag_no_match_returns_empty():
+    """A tag that no request carries should yield an empty result."""
+    result = filter_requests(SAMPLE, FilterCriteria(tags=["nonexistent"]))
+    assert result == []
+
+
+def test_filter_by_host_no_match_returns_empty():
+    """A host that no request targets should yield an empty result."""
+    result = filter_requests(SAMPLE, FilterCriteria(host="unknown.example.com"))
+    assert result == []
