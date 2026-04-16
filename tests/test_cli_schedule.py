@@ -84,9 +84,8 @@ def test_run_schedule_prints_pass(mock_store_cls, mock_schedule, runner, tmp_pat
 
 @patch("req_replay.cli_schedule.schedule_replay")
 @patch("req_replay.cli_schedule.RequestStore")
-def test_run_schedule_verbose_shows_status_on_failure(
-    mock_store_cls, mock_schedule, runner, tmp_path
-):
+def test_run_schedule_prints_fail(mock_store_cls, mock_schedule, runner, tmp_path):
+    """A failed event should print FAIL in the output."""
     mock_store = MagicMock()
     mock_store.load.return_value = MagicMock()
     mock_store_cls.return_value = mock_store
@@ -94,6 +93,16 @@ def test_run_schedule_verbose_shows_status_on_failure(
 
     result = runner.invoke(
         schedule_group,
-        ["run", "abc123", "--store-path", str(tmp_path), "--verbose"],
+        ["run", "abc123", "--store-path", str(tmp_path)],
     )
-    assert "status" in result.output
+    assert "FAIL" in result.output
+
+
+@patch("req_replay.cli_schedule.schedule_replay")
+@patch("req_replay.cli_schedule.RequestStore")
+def test_run_schedule_verbose_shows_status_on_failure(
+    mock_store_cls, mock_schedule, runner, tmp_path
+):
+    mock_store = MagicMock()
+    mock_store.load.return_value = MagicMock()
+    mock_store_cls.return_value = mock_store
