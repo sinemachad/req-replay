@@ -48,9 +48,19 @@ def import_archive(
 
     Returns the list of request IDs that were imported (skipped IDs are
     excluded).
+
+    Raises
+    ------
+    FileNotFoundError:
+        If *archive* does not exist.
+    zipfile.BadZipFile:
+        If *archive* is not a valid zip file.
     """
     if not archive.exists():
         raise FileNotFoundError(f"Archive not found: {archive}")
+
+    if not zipfile.is_zipfile(archive):
+        raise zipfile.BadZipFile(f"Not a valid zip archive: {archive}")
 
     existing = set(store.list_ids())
     imported: List[str] = []
