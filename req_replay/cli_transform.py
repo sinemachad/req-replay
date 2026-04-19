@@ -13,6 +13,20 @@ def transform_group():
     """Transform and replay captured requests."""
 
 
+def _parse_kv(items):
+    """Parse an iterable of 'KEY:VALUE' strings into a dict.
+
+    Raises a ClickException if any item does not contain a colon separator.
+    """
+    result = {}
+    for item in items:
+        if ":" not in item:
+            raise click.ClickException(f"Expected KEY:VALUE, got: {item!r}")
+        k, v = item.split(":", 1)
+        result[k.strip()] = v.strip()
+    return result
+
+
 @transform_group.command(name="replay")
 @click.argument("request_id")
 @click.option("--store-dir", default=".req_replay", show_default=True,
@@ -36,15 +50,6 @@ def replay_transformed(request_id, store_dir, base_url, set_header,
         captured = store.load(request_id)
     except FileNotFoundError:
         raise click.ClickException(f"Request '{request_id}' not found in {store_dir}")
-
-    def _parse_kv(items):
-        result = {}
-        for item in items:
-            if ":" not in item:
-                raise click.ClickException(f"Expected KEY:VALUE, got: {item!r}")
-            k, v = item.split(":", 1)
-            result[k.strip()] = v.strip()
-        return result
 
     config = TransformConfig(
         base_url=base_url,
