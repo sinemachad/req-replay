@@ -34,8 +34,13 @@ def analyze_cmd(store_path: str, top_n: int) -> None:
 @click.option("--store", "store_path", default=".req_replay", show_default=True)
 def top_cmd(n: int, store_path: str) -> None:
     """Show the top N most-used HTTP methods."""
+    if n < 1:
+        raise click.BadParameter("N must be a positive integer.", param_hint="'n'")
     store = RequestStore(store_path)
     requests = store.list()
+    if not requests:
+        click.echo("No requests found.")
+        return
     stats = analyze_methods(requests)
     for method, count in stats.top(n):
         click.echo(f"{method}: {count}")
