@@ -55,6 +55,11 @@ def test_list_all_returns_sorted_by_time(store):
     assert results[2].url == "https://example.com/b"
 
 
+def test_list_all_returns_empty_for_new_store(store):
+    """A freshly created store with no saved requests should return an empty list."""
+    assert store.list_all() == []
+
+
 def test_delete_removes_file(store, sample_request):
     store.save(sample_request)
     result = store.delete(sample_request.id)
@@ -72,3 +77,9 @@ def test_clear_removes_all(store):
     count = store.clear()
     assert count == 3
     assert store.list_all() == []
+
+
+def test_clear_returns_zero_for_empty_store(store):
+    """Clearing an already-empty store should return 0 without raising."""
+    count = store.clear()
+    assert count == 0
