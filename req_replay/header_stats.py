@@ -23,6 +23,20 @@ class HeaderStats:
             lines.append(f"{name:<40} {count:>6}  {pct:>7.1f}%")
         return "\n".join(lines)
 
+    def top_values(self, header: str, n: int = 5) -> List[tuple[str, int]]:
+        """Return the *n* most common values for *header*.
+
+        Args:
+            header: Header name (case-insensitive).
+            n: Maximum number of entries to return.
+
+        Returns:
+            A list of ``(value, count)`` tuples ordered by frequency descending.
+            Returns an empty list if the header was not observed.
+        """
+        counts = self.value_frequency.get(header.lower(), {})
+        return sorted(counts.items(), key=lambda x: -x[1])[:n]
+
 
 def analyze_headers(requests: List[CapturedRequest]) -> HeaderStats:
     """Return frequency statistics for headers across *requests*."""
