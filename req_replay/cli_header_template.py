@@ -22,6 +22,16 @@ def _parse_kv(pairs: tuple[str, ...]) -> dict[str, str]:
     return result
 
 
+def _load_request(store_path: str, request_id: str):
+    """Load a request from the store, exiting with an error if not found."""
+    store = RequestStore(store_path)
+    try:
+        return store, store.load(request_id)
+    except FileNotFoundError:
+        click.echo(f"Request {request_id!r} not found.", err=True)
+        raise SystemExit(1)
+
+
 @header_template_group.command("check")
 @click.argument("request_id")
 @click.option("-v", "--var", "variables", multiple=True, metavar="KEY=VALUE",
@@ -33,13 +43,7 @@ def check_cmd(
     store_path: str,
 ) -> None:
     """Preview header substitutions for a stored request."""
-    store = RequestStore(store_path)
-    try:
-        req = store.load(request_id)
-    except FileNotFoundError:
-        click.echo(f"Request {request_id!r} not found.", err=True)
-        raise SystemExit(1)
-
+    _, req = _load_request(store_path, request_id)
     vars_dict = _parse_kv(variables)
     result = render_headers(req.headers, vars_dict)
     if result.changed:
@@ -59,13 +63,7 @@ def apply_cmd(
     store_path: str,
 ) -> None:
     """Apply header substitutions and save the updated request."""
-    store = RequestStore(store_path)
-    try:
-        req = store.load(request_id)
-    except FileNotFoundError:
-        click.echo(f"Request {request_id!r} not found.", err=True)
-        raise SystemExit(1)
-
+    store, req = _load_request(store_path, request_id)
     vars_dict = _parse_kv(variables)
     updated = render_request_headers(req, vars_dict)
     store.save(updated)
